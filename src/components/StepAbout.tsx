@@ -10,8 +10,13 @@ type Props = {
   onNext: () => void;
 };
 
-export default function StepAbout({ t, form, set, onNext }: Props) {
+export default function StepAbout({ t, form, set: setForm, onNext }: Props) {
   const [errors, setErrors] = useState<Errors>({});
+  // Editing a field clears its error message, so fixed fields stop showing red.
+  const set = (patch: Partial<FormState>) => {
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !(k in patch))));
+    setForm(patch);
+  };
 
   function submit(e: FormEvent) {
     e.preventDefault();

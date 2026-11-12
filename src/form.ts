@@ -10,6 +10,7 @@ export type FormState = {
   mode: "suggest" | "known";
   destination: string;
   origin: string;
+  nationality: string;
   currency: Currency;
   budget: string;
   travelers: string;
@@ -30,7 +31,8 @@ export const emptyForm: FormState = {
   consent: false,
   mode: "suggest",
   destination: "",
-  origin: "Bogotá",
+  origin: "",
+  nationality: "",
   currency: "COP",
   budget: "",
   travelers: "2",
@@ -74,7 +76,8 @@ export function validateAbout(f: FormState, t: { required: string; invalidEmail:
 export function validateTrip(f: FormState, t: { required: string; invalidDates: string }): Errors {
   const e: Errors = {};
   if (f.mode === "known" && f.destination.trim().length < 2) e.destination = t.required;
-  if (f.mode === "suggest" && f.origin.trim().length < 2) e.origin = t.required;
+  if (f.origin.trim().length < 2) e.origin = t.required;
+  if (f.nationality.trim().length < 2) e.nationality = t.required;
   if (!(parseAmount(f.budget) > 0)) e.budget = t.required;
   const n = Number(f.travelers);
   if (!Number.isInteger(n) || n < 1 || n > 20) e.travelers = t.required;
@@ -104,9 +107,11 @@ export function toRequest(f: FormState, lang: Lang): PlanRequest {
     startDate: f.startDate || null,
     endDate: f.endDate || null,
     days: Math.min(auto ?? Number(f.days), 30),
+    origin: f.origin.trim(),
+    nationality: f.nationality.trim(),
   };
   return f.mode === "suggest"
-    ? { mode: "suggest", ...common, origin: f.origin.trim(), hasPassport: !!f.hasPassport, visas: f.hasPassport ? f.visas : [] }
+    ? { mode: "suggest", ...common, hasPassport: !!f.hasPassport, visas: f.hasPassport ? f.visas : [] }
     : { mode: "known", ...common, destination: f.destination.trim(), hasFlights: !!f.hasFlights, hasLodging: !!f.hasLodging };
 }
 

@@ -82,7 +82,7 @@ export default function App() {
   }
 
   function restart() {
-    setForm((f) => ({ ...emptyForm, name: f.name, email: f.email, whatsapp: f.whatsapp, consent: f.consent }));
+    setForm((f) => ({ ...emptyForm, name: f.name, email: f.email, whatsapp: f.whatsapp, consent: f.consent, origin: f.origin, nationality: f.nationality }));
     setStatus({ kind: "idle" });
     setStep(2);
   }

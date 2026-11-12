@@ -14,7 +14,7 @@ import {
 const MODEL = "claude-haiku-5-5";
 const CACHE_DAYS = 7;
 
-const SYSTEM = `You are the trip planner of Pa Donde Vamos, a web app for travelers who start in Colombia.
+const SYSTEM = `You are the trip planner of Pa Donde Vamos, a web app for travelers from anywhere in the world.
 You receive one trip request as JSON and answer with realistic, concrete suggestions.
 
 Rules:
@@ -24,20 +24,22 @@ Rules:
 - Fit the suggestions to planType (e.g. bachelor/bachelorette: nightlife and group plans; family: kid-friendly, little travel; proposal/honeymoon/couple: romantic places; rest: calm and nature; first_trip: easy, safe, well connected places).
 - If startDate is given, consider the season (high/low, weather) for those dates.
 - Use real, well-known place names. Do not invent prices that are wildly off; when unsure, round to a typical value.
-- requirements: one short sentence on passport/visa/entry needs for a Colombian citizen, ending with a reminder to verify them before buying. For domestic Colombian destinations say no passport is needed (mention any local entry card, such as San Andres's tourist card).
+- The traveler leaves from "origin" (a city) and holds the "nationality" given. Infer the origin country from the city.
+- requirements: one short sentence on passport/visa/entry needs for that nationality, ending with a reminder to verify them before buying. For domestic destinations say no passport is needed (mention any local entry card, such as San Andres's tourist card in Colombia).
 - Write every text field in the language given by "lang" ("es" = Spanish, "en" = English). Keep each text short (one sentence).
 
 Mode "suggest" (the traveler wants destination ideas):
 - Return exactly 3 destinations, from cheapest to most expensive total.
-- Without passport (hasPassport false): only destinations inside Colombia.
-- With passport: mix domestic and international destinations that a Colombian can enter without a visa, or with one of the visas listed in "visas".
+- Without passport (hasPassport false): only destinations inside the origin country, or countries this nationality can enter with a national ID card (e.g. Andean Community, Mercosur, EU/Schengen).
+- With passport: at least one international destination unless the budget truly cannot reach one; only countries this nationality can enter without a visa, with an eVisa/ETA, or with one of the visas listed in "visas".
+- Do not default to Colombia: pick destinations that make sense from the origin city and fit the budget.
 - transport includes the round trip from "origin" plus local transport.
 - activities: 3 to 5 items. food.places: 1 or 2 typical places or dishes.
 
 Mode "known" (the traveler already chose "destination"):
 - Return a day-by-day itinerary with one entry per day (max "days" entries), each with 1 to 3 activities and 1 or 2 restaurants (priceLevel is "$", "$$" or "$$$").
 - lodging: null if hasLodging is true; otherwise suggest lodging.
-- transportToDestination: null if hasFlights is true; otherwise estimate the round trip from Bogota.
+- transportToDestination: null if hasFlights is true; otherwise estimate the round trip from "origin".
 - budgetPerPerson is what each person wants to spend AT the destination (plus lodging/transport to it only if they don't have them).
 - tips: 2 or 3 short practical tips.`;
 
@@ -67,9 +69,11 @@ function tripOnly(r: PlanRequest) {
     startDate: r.startDate,
     endDate: r.endDate,
     days: r.days,
+    origin: r.origin,
+    nationality: r.nationality,
   };
   return r.mode === "suggest"
-    ? { ...base, origin: r.origin, hasPassport: r.hasPassport, visas: [...r.visas].sort() }
+    ? { ...base, hasPassport: r.hasPassport, visas: [...r.visas].sort() }
     : { ...base, destination: r.destination, hasFlights: r.hasFlights, hasLodging: r.hasLodging };
 }
 
@@ -137,7 +141,8 @@ export default async (req: Request) => {
         start_date: r.startDate,
         end_date: r.endDate,
         days: r.days,
-        origin: r.mode === "suggest" ? r.origin : null,
+        origin: r.origin,
+        nationality: r.nationality,
         has_passport: r.mode === "suggest" ? r.hasPassport : null,
         visas: r.mode === "suggest" ? r.visas : null,
         destination: r.mode === "known" ? r.destination : null,
