@@ -125,6 +125,8 @@ export default function App() {
           <Privacy lang={lang} />
         ) : (
           <>
+            {/* On phones the header has no room for the tagline, so it opens the first step instead. */}
+            {step === 1 && <p className="mb-4 text-lg font-semibold text-brand-700 sm:hidden dark:text-brand-500">{t.tagline}</p>}
             <Progress step={step} labels={t.steps} stepOf={t.stepOf(step)} />
             {step === 1 && <StepAbout t={t} form={form} set={set} onNext={() => setStep(2)} />}
             {step === 2 && <StepTrip t={t} lang={lang} form={form} set={set} onBack={() => setStep(1)} onSubmit={submit} />}
