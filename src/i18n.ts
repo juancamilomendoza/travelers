@@ -1,7 +1,7 @@
 import type { Lang, PlanType, Visa } from "./shared/schema";
 
 const es = {
-  tagline: "Tu viaje a la medida de tu presupuesto",
+  tagline: "Tú pones las ganas, nosotros el plan.",
   stepOf: (n: number) => `Paso ${n} de 3`,
   steps: ["Tus datos", "Tu viaje", "Tu plan"],
   // Step 1
@@ -87,7 +87,7 @@ const es = {
 type Dict = typeof es;
 
 const en: Dict = {
-  tagline: "Your trip, sized to your budget",
+  tagline: "You bring the vibe, we bring the plan.",
   stepOf: (n) => `Step ${n} of 3`,
   steps: ["About you", "Your trip", "Your plan"],
   s1Title: "Tell us who you are",
