@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { planLabels, visaLabels, type dict } from "../i18n";
 import { daysBetween, validateTrip, type Errors, type FormState } from "../form";
-import { CURRENCIES, MAX_CHILDREN, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
+import { CURRENCIES, INTERESTS, WHEN, MAX_CHILDREN, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
 import { Chip, Choice, Counter, Field, YesNo } from "./ui";
 import NationalityPicker from "./NationalityPicker";
+import { currentCity } from "../geo";
 import PlaceInput from "./PlaceInput";
 import { COUNTRIES, DESTINATIONS, ORIGIN_CITIES } from "../places";
 
@@ -20,6 +21,8 @@ const today = () => new Date().toISOString().slice(0, 10);
 
 export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit }: Props) {
   const [errors, setErrors] = useState<Errors>({});
+  const [locating, setLocating] = useState<"idle" | "busy" | "failed">("idle");
+  const local = form.mode === "local";
   // Editing a field clears its error message, so fixed fields stop showing red.
   const set = (patch: Partial<FormState>) => {
     setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !(k in patch))));
@@ -28,6 +31,13 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
   const autoDays = daysBetween(form.startDate, form.endDate);
   const kids = form.childrenAges.length;
   const room = MAX_TRAVELERS - form.adults - kids;
+
+  async function locate() {
+    setLocating("busy");
+    const city = await currentCity(lang);
+    if (city) set({ city });
+    setLocating(city ? "idle" : "failed");
+  }
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -43,10 +53,10 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
 
   return (
     <form onSubmit={submit} noValidate className="card space-y-6">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.s2Title}</h1>
+      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{local ? t.s2TitleLocal : t.s2Title}</h1>
 
-      <div className="grid gap-3 sm:grid-cols-2" role="radiogroup">
-        {(["suggest", "known"] as const).map((m) => (
+      <div className="grid gap-3 sm:grid-cols-3" role="radiogroup">
+        {(["suggest", "known", "local"] as const).map((m) => (
           <button
             key={m}
             type="button"
@@ -59,9 +69,11 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
                 : "border-stone-200 hover:border-stone-300 dark:border-stone-800 dark:hover:border-stone-700"
             }`}
           >
-            <span className="block text-lg">{m === "suggest" ? "🧭" : "📍"}</span>
-            <span className="mt-1 block font-semibold">{m === "suggest" ? t.modeSuggest : t.modeKnown}</span>
-            <span className="mt-0.5 block text-sm text-stone-600 dark:text-stone-400">{m === "suggest" ? t.modeSuggestHint : t.modeKnownHint}</span>
+            <span className="block text-lg">{{ suggest: "🧭", known: "📍", local: "🍽️" }[m]}</span>
+            <span className="mt-1 block font-semibold">{{ suggest: t.modeSuggest, known: t.modeKnown, local: t.modeLocal }[m]}</span>
+            <span className="mt-0.5 block text-sm text-stone-600 dark:text-stone-400">
+              {{ suggest: t.modeSuggestHint, known: t.modeKnownHint, local: t.modeLocalHint }[m]}
+            </span>
           </button>
         ))}
       </div>
@@ -72,6 +84,37 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
         </Field>
       )}
 
+      {local && (
+        <>
+          <Field label={t.city} error={errors.city} hint={locating === "failed" ? t.locationFailed : undefined} htmlFor="city">
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="flex-1">
+                <PlaceInput id="city" options={ORIGIN_CITIES} placeholder={t.cityPh} value={form.city} onChange={(v) => set({ city: v })} />
+              </div>
+              <button type="button" className="btn-ghost shrink-0 border border-stone-300 dark:border-stone-700" disabled={locating === "busy"} onClick={locate}>
+                {locating === "busy" ? t.locating : t.useLocation}
+              </button>
+            </div>
+          </Field>
+          <fieldset>
+            <legend className="label">{t.interests}</legend>
+            <div className="flex flex-wrap gap-2">
+              {INTERESTS.map((i) => (
+                <Chip
+                  key={i}
+                  active={form.interests.includes(i)}
+                  onClick={() => set({ interests: form.interests.includes(i) ? form.interests.filter((x) => x !== i) : [...form.interests, i] })}
+                >
+                  {t.interestLabels[i]}
+                </Chip>
+              ))}
+            </div>
+            {errors.interests && <p className="error">{errors.interests}</p>}
+          </fieldset>
+        </>
+      )}
+
+      {!local && (
       <div className="grid gap-5 sm:grid-cols-2">
         <Field label={t.nationalities} error={errors.nationalities} htmlFor="nationalities">
           <NationalityPicker
@@ -88,6 +131,7 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
           <PlaceInput id="origin" options={ORIGIN_CITIES} placeholder={t.originPh} value={form.origin} onChange={(v) => set({ origin: v })} />
         </Field>
       </div>
+      )}
 
       <fieldset>
         <legend className="label">{t.group}</legend>
@@ -154,18 +198,19 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
             ))}
           </select>
         </Field>
-        <Field label={form.mode === "known" ? t.budgetKnown : t.budgetSuggest} hint={t.budgetHint} error={errors.budget} htmlFor="budget">
+        <Field label={local ? t.budgetLocal : form.mode === "known" ? t.budgetKnown : t.budgetSuggest} hint={local ? t.budgetLocalHint : t.budgetHint} error={errors.budget} htmlFor="budget">
           <input
             id="budget"
             className="input"
             inputMode="numeric"
-            placeholder={form.currency === "COP" ? "2.000.000" : "800"}
+            placeholder={form.currency === "COP" ? (local ? "300.000" : "2.000.000") : local ? "100" : "800"}
             value={formatBudget(form.budget)}
             onChange={(e) => set({ budget: e.target.value.replace(/[^\d]/g, "") })}
           />
         </Field>
       </div>
 
+      {!local && (
       <div>
         <Field label={t.planType} error={errors.planType} htmlFor="planType">
           <select id="planType" className="input" value={form.planType} onChange={(e) => set({ planType: e.target.value as PlanType })}>
@@ -180,7 +225,20 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
           </select>
         </Field>
       </div>
+      )}
 
+      {local ? (
+        <div>
+          <Choice label={t.when} value={form.when} options={WHEN.map((w) => ({ value: w, label: t.whenLabels[w] }))} onChange={(v) => set({ when: v })} error={errors.when} />
+          {form.when === "date" && (
+            <div className="mt-3">
+              <Field label={t.whenDate} error={errors.startDate} htmlFor="localDate">
+                <input id="localDate" type="date" className="input sm:w-56" min={today()} value={form.startDate} onChange={(e) => set({ startDate: e.target.value })} />
+              </Field>
+            </div>
+          )}
+        </div>
+      ) : (
       <fieldset>
         <legend className="label">{t.dates}</legend>
         <div className="grid grid-cols-2 gap-3">
@@ -208,8 +266,9 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
           </div>
         )}
       </fieldset>
+      )}
 
-      {form.mode === "suggest" ? (
+      {form.mode === "suggest" && (
         <>
           <Choice
             label={form.adults + kids > 1 ? t.passportGroup : t.passport}
@@ -235,7 +294,8 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
             </fieldset>
           )}
         </>
-      ) : (
+      )}
+      {form.mode === "known" && (
         <div className="grid gap-5 sm:grid-cols-2">
           <YesNo label={t.hasFlights} value={form.hasFlights} onChange={(v) => set({ hasFlights: v })} yes={t.yes} no={t.no} error={errors.hasFlights} />
           <YesNo label={t.hasLodging} value={form.hasLodging} onChange={(v) => set({ hasLodging: v })} yes={t.yes} no={t.no} error={errors.hasLodging} />

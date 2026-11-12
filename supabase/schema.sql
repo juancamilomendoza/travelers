@@ -55,3 +55,11 @@ alter table public.leads
   add column if not exists passport_status text check (passport_status in ('all', 'some', 'none')),
   add column if not exists budget_total numeric,
   add column if not exists budget_total_cop numeric;
+
+-- Added 2026-11-12: "Un plan en mi ciudad" (mode local).
+alter table public.leads drop constraint if exists leads_mode_check;
+alter table public.leads add constraint leads_mode_check check (mode in ('suggest', 'known', 'local'));
+alter table public.leads alter column plan_type drop not null;
+alter table public.leads
+  add column if not exists interests text[],
+  add column if not exists local_when text check (local_when in ('today', 'weekend', 'date'));

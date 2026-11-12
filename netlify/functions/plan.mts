@@ -5,6 +5,7 @@ import { createHash } from "node:crypto";
 import type { Config } from "@netlify/functions";
 import {
   KnownResult,
+  LocalResult,
   PlanRequest,
   SuggestResult,
   type PlanResponse,
@@ -44,7 +45,15 @@ Mode "known" (the traveler already chose "destination"):
 - lodging: null if hasLodging is true; otherwise suggest lodging.
 - transportToDestination: null if hasFlights is true; otherwise estimate the round trip from "origin".
 - budgetTotal is what the whole group wants to spend AT the destination (plus lodging/transport to it only if they don't have them).
-- tips: 2 or 3 short practical tips.`;
+- tips: 2 or 3 short practical tips.
+
+Mode "local" (the group wants a plan in the city where they already are, "city"):
+- There is no trip: ignore travel, passports and requirements. "today" is today's date; "when" is "today", "weekend" (the coming weekend) or "date" (use "date").
+- Return 4 or 5 real, currently well-known places in or near "city" that match "interests" (food, nightlife, culture, outdoors, kids = family plan, romantic, celebration). Mix the interests when there are several.
+- Each place: name; kind (a short label such as "Restaurante" or "Mirador", in "lang"); area (neighborhood or zone); why (one sentence); priceLevel ("$", "$$" or "$$$"); cost = estimated total for the whole group (food, drinks, tickets, local transport).
+- Each place's cost must fit budgetTotal. If nothing fits, set budgetTooLow and minimumBudget as above.
+- With children: only places that welcome them at those ages; no bars or nightclubs.
+- tips: 2 or 3 short tips (booking, best time to go, safety, transport).`;
 
 function json(body: PlanResponse, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -62,13 +71,21 @@ function supabase(): SupabaseClient | null {
 
 /** Everything that shapes the AI answer, without personal data. Used for the cache and sent to the AI. */
 function tripOnly(r: PlanRequest) {
-  const base = {
+  const group = {
     mode: r.mode,
     lang: r.lang,
     currency: r.currency,
     budgetTotal: r.budgetTotal,
     adults: r.adults,
     childrenAges: [...r.childrenAges].sort((a, b) => a - b),
+  };
+  if (r.mode === "local") {
+    // "today" makes "today" and "weekend" concrete; it also keeps cached answers to one day.
+    const today = new Date().toISOString().slice(0, 10);
+    return { ...group, city: r.city, interests: [...r.interests].sort(), when: r.when, date: r.date, today };
+  }
+  const base = {
+    ...group,
     planType: r.planType,
     startDate: r.startDate,
     endDate: r.endDate,
@@ -97,7 +114,7 @@ async function toCop(amount: number, currency: string): Promise<number | null> {
 
 async function askClaude(r: PlanRequest) {
   const client = new Anthropic(); // reads ANTHROPIC_API_KEY
-  const schema = r.mode === "suggest" ? SuggestResult : KnownResult;
+  const schema = r.mode === "suggest" ? SuggestResult : r.mode === "known" ? KnownResult : LocalResult;
   const response = await client.messages.parse({
     model: MODEL,
     max_tokens: 8000,
@@ -149,17 +166,30 @@ export default async (req: Request) => {
         travelers,
         adults: r.adults,
         children_ages: r.childrenAges,
-        plan_type: r.planType,
-        start_date: r.startDate,
-        end_date: r.endDate,
-        days: r.days,
-        origin: r.origin,
-        nationalities: r.nationalities,
-        nationality: r.nationalities.join(", "),
+        ...(r.mode === "local"
+          ? {
+              plan_type: null,
+              start_date: r.date,
+              end_date: r.date,
+              days: 1,
+              origin: r.city,
+              destination: r.city,
+              interests: r.interests,
+              local_when: r.when,
+            }
+          : {
+              plan_type: r.planType,
+              start_date: r.startDate,
+              end_date: r.endDate,
+              days: r.days,
+              origin: r.origin,
+              nationalities: r.nationalities,
+              nationality: r.nationalities.join(", "),
+            }),
         passport_status: r.mode === "suggest" ? r.passport : null,
         has_passport: r.mode === "suggest" ? r.passport === "all" : null,
         visas: r.mode === "suggest" ? r.visas : null,
-        destination: r.mode === "known" ? r.destination : null,
+        ...(r.mode === "known" ? { destination: r.destination } : {}),
         has_flights: r.mode === "known" ? r.hasFlights : null,
         has_lodging: r.mode === "known" ? r.hasLodging : null,
       })
@@ -208,9 +238,9 @@ export default async (req: Request) => {
   // The "contact me" button only makes sense when there is a way to reach the person.
   if (!r.email && !r.whatsapp) leadId = null;
 
-  return r.mode === "suggest"
-    ? json({ ok: true, mode: "suggest", leadId, result: result as SuggestResult })
-    : json({ ok: true, mode: "known", leadId, result: result as KnownResult });
+  if (r.mode === "suggest") return json({ ok: true, mode: "suggest", leadId, result: result as SuggestResult });
+  if (r.mode === "known") return json({ ok: true, mode: "known", leadId, result: result as KnownResult });
+  return json({ ok: true, mode: "local", leadId, result: result as LocalResult });
 };
 
 export const config: Config = { path: "/api/plan" };

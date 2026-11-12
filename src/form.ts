@@ -1,4 +1,4 @@
-import { CONSENT_VERSION, MAX_TRAVELERS, type Currency, type Lang, type Passport, type PlanType, type Visa } from "./shared/constants";
+import { CONSENT_VERSION, MAX_TRAVELERS, type Currency, type Interest, type Lang, type Passport, type When, type PlanType, type Visa } from "./shared/constants";
 import type { PlanRequest } from "./shared/schema";
 
 /** Everything the two form screens collect. Kept as strings where the user types, converted on submit. */
@@ -7,7 +7,11 @@ export type FormState = {
   email: string;
   whatsapp: string;
   consent: boolean;
-  mode: "suggest" | "known";
+  mode: "suggest" | "known" | "local";
+  /** "A plan in my city": where, what and when. The date reuses startDate. */
+  city: string;
+  interests: Interest[];
+  when: When | null;
   destination: string;
   origin: string;
   /** Countries already added to the group. */
@@ -34,6 +38,9 @@ export const emptyForm: FormState = {
   whatsapp: "+57 ",
   consent: false,
   mode: "suggest",
+  city: "",
+  interests: [],
+  when: null,
   destination: "",
   origin: "",
   nationalities: [],
@@ -80,12 +87,19 @@ export function validateAbout(f: FormState, t: { required: string; invalidEmail:
 
 export function validateTrip(f: FormState, t: { required: string; invalidDates: string; childAgeMissing: string }): Errors {
   const e: Errors = {};
-  if (f.mode === "known" && f.destination.trim().length < 2) e.destination = t.required;
-  if (f.origin.trim().length < 2) e.origin = t.required;
-  if (f.nationalities.length === 0) e.nationalities = t.required;
   if (!(parseAmount(f.budget) > 0)) e.budget = t.required;
   if (f.adults < 1 || f.adults + f.childrenAges.length > MAX_TRAVELERS) e.adults = t.required;
   if (f.childrenAges.some((a) => a === null)) e.childrenAges = t.childAgeMissing;
+  if (f.mode === "local") {
+    if (f.city.trim().length < 2) e.city = t.required;
+    if (f.interests.length === 0) e.interests = t.required;
+    if (f.when === null) e.when = t.required;
+    if (f.when === "date" && !f.startDate) e.startDate = t.required;
+    return e;
+  }
+  if (f.mode === "known" && f.destination.trim().length < 2) e.destination = t.required;
+  if (f.origin.trim().length < 2) e.origin = t.required;
+  if (f.nationalities.length === 0) e.nationalities = t.required;
   if (!f.planType) e.planType = t.required;
   if (f.startDate && f.endDate && !daysBetween(f.startDate, f.endDate)) e.endDate = t.invalidDates;
   const d = Number(f.days);
@@ -100,7 +114,7 @@ export function validateTrip(f: FormState, t: { required: string; invalidDates: 
 
 export function toRequest(f: FormState, lang: Lang): PlanRequest {
   const auto = daysBetween(f.startDate, f.endDate);
-  const common = {
+  const base = {
     lang,
     name: textOrNull(f.name),
     email: textOrNull(f.email),
@@ -111,6 +125,13 @@ export function toRequest(f: FormState, lang: Lang): PlanRequest {
     budgetTotal: parseAmount(f.budget),
     adults: f.adults,
     childrenAges: f.childrenAges.map((a) => a ?? 0),
+  };
+  if (f.mode === "local") {
+    const when = f.when ?? "today";
+    return { mode: "local", ...base, city: f.city.trim(), interests: f.interests, when, date: when === "date" ? f.startDate || null : null };
+  }
+  const common = {
+    ...base,
     planType: f.planType as PlanType,
     startDate: f.startDate || null,
     endDate: f.endDate || null,

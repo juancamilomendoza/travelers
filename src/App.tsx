@@ -4,7 +4,7 @@ import { emptyForm, parseAmount, toRequest, type FormState } from "./form";
 import type { Lang, PlanResponse } from "./shared/schema";
 import StepAbout from "./components/StepAbout";
 import StepTrip from "./components/StepTrip";
-import { AgencyCta, KnownView, SuggestView } from "./components/Results";
+import { AgencyCta, KnownView, LocalView, SuggestView } from "./components/Results";
 import Privacy from "./components/Privacy";
 import { Progress } from "./components/ui";
 
@@ -82,7 +82,7 @@ export default function App() {
   }
 
   function restart() {
-    setForm((f) => ({ ...emptyForm, name: f.name, email: f.email, whatsapp: f.whatsapp, consent: f.consent, origin: f.origin, nationalities: f.nationalities }));
+    setForm((f) => ({ ...emptyForm, name: f.name, email: f.email, whatsapp: f.whatsapp, consent: f.consent, origin: f.origin, nationalities: f.nationalities, city: f.city }));
     setStatus({ kind: "idle" });
     setStep(2);
   }
@@ -154,10 +154,13 @@ export default function App() {
               <div className="space-y-5">
                 {status.data.mode === "suggest" ? (
                   <SuggestView t={t} lang={lang} currency={form.currency} budgetTotal={budgetTotal} result={status.data.result} />
-                ) : (
+                ) : status.data.mode === "known" ? (
                   <KnownView t={t} lang={lang} currency={form.currency} budgetTotal={budgetTotal} result={status.data.result} />
+                ) : (
+                  <LocalView t={t} lang={lang} currency={form.currency} budgetTotal={budgetTotal} result={status.data.result} />
                 )}
-                <AgencyCta t={t} leadId={status.data.leadId} />
+                {/* Agencies sell trips; a night out in your own city is not a lead for them (yet). */}
+                {status.data.mode !== "local" && <AgencyCta t={t} leadId={status.data.leadId} />}
                 <div className="text-center">
                   <button className="btn-ghost" onClick={restart}>
                     ↺ {t.restart}

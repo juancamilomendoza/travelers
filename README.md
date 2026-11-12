@@ -2,7 +2,7 @@
 
 Web app mínima de Pa Donde Vamos (proyecto Travelers): el viajero deja sus datos, cuenta su presupuesto y recibe en segundos
 3 destinos con su PHAMA (hospedaje, actividades, movilidad y alimentación), o un plan día por día si ya
-tiene destino. Cada registro se guarda en Supabase con la autorización de datos del usuario.
+tiene destino, o 4 a 5 lugares para salir en su propia ciudad. Cada registro se guarda en Supabase con la autorización de datos del usuario.
 
 - Español e inglés, modo claro y oscuro.
 - Las sugerencias las genera Claude Haiku 5.5 (el modelo más económico de Anthropic) desde una función de Netlify.
