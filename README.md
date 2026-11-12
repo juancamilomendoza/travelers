@@ -1,6 +1,6 @@
-# Travelers
+# Pa Donde Vamos
 
-Web app mínima de Travelers: el viajero deja sus datos, cuenta su presupuesto y recibe en segundos
+Web app mínima de Pa Donde Vamos (proyecto Travelers): el viajero deja sus datos, cuenta su presupuesto y recibe en segundos
 3 destinos con su PHAMA (hospedaje, actividades, movilidad y alimentación), o un plan día por día si ya
 tiene destino. Cada registro se guarda en Supabase con la autorización de datos del usuario.
 

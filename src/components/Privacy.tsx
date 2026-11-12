@@ -5,7 +5,7 @@ const content = {
   es: {
     title: "Política de Tratamiento de Datos Personales",
     intro:
-      "Esta política explica cómo Travelers trata los datos personales que recibe a través de este sitio, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 de Colombia.",
+      "Esta política explica cómo Pa Donde Vamos trata los datos personales que recibe a través de este sitio, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 de Colombia.",
     sections: [
       ["Responsable", "[NOMBRE O RAZÓN SOCIAL], identificado con [NIT/CC], con domicilio en [CIUDAD], Colombia. Contacto: [CORREO DE CONTACTO]."],
       ["Datos que recogemos", "Nombre, correo electrónico, número de WhatsApp, presupuesto, número de viajeros, tipo de plan, fechas, destino, ciudad de salida, y si cuentas con pasaporte, visas, vuelos u hospedaje."],
@@ -25,7 +25,7 @@ const content = {
   en: {
     title: "Personal Data Processing Policy",
     intro:
-      "This policy explains how Travelers processes the personal data it receives through this site, under Colombian Law 1581 of 2012 and Decree 1377 of 2013.",
+      "This policy explains how Pa Donde Vamos processes the personal data it receives through this site, under Colombian Law 1581 of 2012 and Decree 1377 of 2013.",
     sections: [
       ["Data controller", "[NAME OR COMPANY], ID [NIT/CC], based in [CITY], Colombia. Contact: [CONTACT EMAIL]."],
       ["Data we collect", "Name, email, WhatsApp number, budget, number of travelers, trip type, dates, destination, departure city, and whether you have a passport, visas, flights or lodging."],

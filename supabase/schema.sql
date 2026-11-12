@@ -1,4 +1,4 @@
--- Travelers: run this once in Supabase > SQL Editor.
+-- Pa Donde Vamos: run this once in Supabase > SQL Editor.
 -- Only the Netlify function (service role key) reads and writes these tables.
 -- Row Level Security is on with no policies, so the public anon key cannot read the leads.
 

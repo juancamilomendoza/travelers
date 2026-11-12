@@ -14,7 +14,7 @@ import {
 const MODEL = "claude-haiku-5-5";
 const CACHE_DAYS = 7;
 
-const SYSTEM = `You are the trip planner of Travelers, a web app for travelers who start in Colombia.
+const SYSTEM = `You are the trip planner of Pa Donde Vamos, a web app for travelers who start in Colombia.
 You receive one trip request as JSON and answer with realistic, concrete suggestions.
 
 Rules:
