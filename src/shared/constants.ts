@@ -25,4 +25,4 @@ export type Visa = (typeof VISAS)[number];
 export type PlanType = (typeof PLAN_TYPES)[number];
 
 /** Version of the consent text shown on screen 1. Bump it whenever the text changes. */
-export const CONSENT_VERSION = "2026-11-12";
+export const CONSENT_VERSION = "2026-11-12.2";

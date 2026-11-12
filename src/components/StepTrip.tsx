@@ -3,6 +3,8 @@ import { planLabels, visaLabels, type dict } from "../i18n";
 import { daysBetween, validateTrip, type Errors, type FormState } from "../form";
 import { CURRENCIES, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
 import { Chip, Field, YesNo } from "./ui";
+import PlaceInput from "./PlaceInput";
+import { DESTINATIONS, ORIGIN_CITIES } from "../places";
 
 type Props = {
   t: (typeof dict)["es"];
@@ -58,11 +60,11 @@ export default function StepTrip({ t, lang, form, set, onBack, onSubmit }: Props
 
       {form.mode === "known" ? (
         <Field label={t.destination} error={errors.destination} htmlFor="destination">
-          <input id="destination" className="input" placeholder={t.destinationPh} value={form.destination} onChange={(e) => set({ destination: e.target.value })} />
+          <PlaceInput id="destination" options={DESTINATIONS} placeholder={t.destinationPh} value={form.destination} onChange={(v) => set({ destination: v })} />
         </Field>
       ) : (
         <Field label={t.origin} error={errors.origin} htmlFor="origin">
-          <input id="origin" className="input" value={form.origin} onChange={(e) => set({ origin: e.target.value })} />
+          <PlaceInput id="origin" options={ORIGIN_CITIES} value={form.origin} onChange={(v) => set({ origin: v })} />
         </Field>
       )}
 

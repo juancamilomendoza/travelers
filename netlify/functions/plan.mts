@@ -14,7 +14,7 @@ import {
 const MODEL = "claude-haiku-5-5";
 const CACHE_DAYS = 7;
 
-const SYSTEM = `You are the trip planner of Travelers, a web app for travelers who start in Colombia.
+const SYSTEM = `You are the trip planner of Pa Donde Vamos, a web app for travelers who start in Colombia.
 You receive one trip request as JSON and answer with realistic, concrete suggestions.
 
 Rules:
@@ -127,8 +127,8 @@ export default async (req: Request) => {
         name: r.name,
         email: r.email,
         whatsapp: r.whatsapp,
-        consent_version: r.consentVersion,
-        consent_at: new Date().toISOString(),
+        consent_version: r.consent ? r.consentVersion : null,
+        consent_at: r.consent ? new Date().toISOString() : null,
         currency: r.currency,
         budget_per_person: r.budgetPerPerson,
         budget_per_person_cop: await toCop(r.budgetPerPerson, r.currency),
@@ -185,6 +185,9 @@ export default async (req: Request) => {
   }
 
   if (db && leadId) await db.from("leads").update({ result }).eq("id", leadId);
+
+  // The "contact me" button only makes sense when there is a way to reach the person.
+  if (!r.email && !r.whatsapp) leadId = null;
 
   return r.mode === "suggest"
     ? json({ ok: true, mode: "suggest", leadId, result: result as SuggestResult })

@@ -1,17 +1,18 @@
--- Travelers: run this once in Supabase > SQL Editor.
+-- Pa Donde Vamos: run this once in Supabase > SQL Editor.
 -- Only the Netlify function (service role key) reads and writes these tables.
 -- Row Level Security is on with no policies, so the public anon key cannot read the leads.
+-- name/email/whatsapp are optional: a row without them is an anonymous search (no consent needed).
 
 create table if not exists public.leads (
   id uuid primary key default gen_random_uuid(),
   created_at timestamptz not null default now(),
   mode text not null check (mode in ('suggest', 'known')),
   lang text not null,
-  name text not null,
-  email text not null,
-  whatsapp text not null,
-  consent_version text not null,
-  consent_at timestamptz not null,
+  name text,
+  email text,
+  whatsapp text,
+  consent_version text,
+  consent_at timestamptz,
   currency text not null check (currency in ('COP', 'USD', 'EUR')),
   budget_per_person numeric not null,
   budget_per_person_cop numeric,

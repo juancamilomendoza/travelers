@@ -96,7 +96,7 @@ export default function App() {
           <a href="#" className="flex items-center gap-2" onClick={() => setRoute("")}>
             <img src="/favicon.svg" alt="" className="size-8" />
             <span>
-              <span className="block font-extrabold tracking-tight">TRAVELERS</span>
+              <span className="block font-extrabold tracking-tight">Pa Donde Vamos</span>
               <span className="hidden text-xs text-stone-500 sm:block dark:text-stone-400">{t.tagline}</span>
             </span>
           </a>
