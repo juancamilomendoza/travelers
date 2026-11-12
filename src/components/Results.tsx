@@ -61,7 +61,7 @@ export function SuggestView({ t, lang, currency, budgetTotal, result }: Common &
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.s3Suggest}</h1>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t.estimated}</p>
       </header>
-      {result.budgetTooLow && <TooLow t={t} min={result.minimumBudgetPerPerson} fmt={fmt} />}
+      {result.budgetTooLow && <TooLow t={t} min={result.minimumBudget} fmt={fmt} />}
       {result.destinations.map((d, i) => (
         <article key={i} className="card">
           <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">#{i + 1}</p>
@@ -107,7 +107,7 @@ export function KnownView({ t, lang, currency, budgetTotal, result }: Common & {
         <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.s3Known(result.destination)}</h1>
         <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t.estimated}</p>
       </header>
-      {result.budgetTooLow && <TooLow t={t} min={result.minimumBudgetPerPerson} fmt={fmt} />}
+      {result.budgetTooLow && <TooLow t={t} min={result.minimumBudget} fmt={fmt} />}
 
       <ol className="space-y-4">
         {result.itinerary.map((d) => (

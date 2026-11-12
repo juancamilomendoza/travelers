@@ -1,4 +1,4 @@
-import { CONSENT_VERSION, type Currency, type Lang, type PlanType, type Visa } from "./shared/constants";
+import { CONSENT_VERSION, MAX_TRAVELERS, type Currency, type Lang, type Passport, type PlanType, type Visa } from "./shared/constants";
 import type { PlanRequest } from "./shared/schema";
 
 /** Everything the two form screens collect. Kept as strings where the user types, converted on submit. */
@@ -10,15 +10,19 @@ export type FormState = {
   mode: "suggest" | "known";
   destination: string;
   origin: string;
-  nationality: string;
+  /** Countries already added to the group. */
+  nationalities: string[];
   currency: Currency;
+  /** Total for the whole group, digits only. */
   budget: string;
-  travelers: string;
+  adults: number;
+  /** One age per child; null until the user picks it. */
+  childrenAges: (number | null)[];
   planType: PlanType | "";
   startDate: string;
   endDate: string;
   days: string;
-  hasPassport: boolean | null;
+  passport: Passport | null;
   visas: Visa[];
   hasFlights: boolean | null;
   hasLodging: boolean | null;
@@ -32,15 +36,16 @@ export const emptyForm: FormState = {
   mode: "suggest",
   destination: "",
   origin: "",
-  nationality: "",
+  nationalities: [],
   currency: "COP",
   budget: "",
-  travelers: "2",
+  adults: 2,
+  childrenAges: [],
   planType: "",
   startDate: "",
   endDate: "",
   days: "4",
-  hasPassport: null,
+  passport: null,
   visas: [],
   hasFlights: null,
   hasLodging: null,
@@ -73,19 +78,21 @@ export function validateAbout(f: FormState, t: { required: string; invalidEmail:
   return e;
 }
 
-export function validateTrip(f: FormState, t: { required: string; invalidDates: string }): Errors {
+export function validateTrip(f: FormState, t: { required: string; invalidDates: string; childAgeMissing: string }): Errors {
   const e: Errors = {};
   if (f.mode === "known" && f.destination.trim().length < 2) e.destination = t.required;
   if (f.origin.trim().length < 2) e.origin = t.required;
-  if (f.nationality.trim().length < 2) e.nationality = t.required;
+  if (f.nationalities.length === 0) e.nationalities = t.required;
   if (!(parseAmount(f.budget) > 0)) e.budget = t.required;
-  const n = Number(f.travelers);
-  if (!Number.isInteger(n) || n < 1 || n > 20) e.travelers = t.required;
+  if (f.adults < 1 || f.adults + f.childrenAges.length > MAX_TRAVELERS) e.adults = t.required;
+  if (f.childrenAges.some((a) => a === null)) e.childrenAges = t.childAgeMissing;
   if (!f.planType) e.planType = t.required;
   if (f.startDate && f.endDate && !daysBetween(f.startDate, f.endDate)) e.endDate = t.invalidDates;
   const d = Number(f.days);
   if (!daysBetween(f.startDate, f.endDate) && (!Number.isInteger(d) || d < 1 || d > 30)) e.days = t.required;
-  if (f.mode === "suggest" && f.hasPassport === null) e.hasPassport = t.required;
+  // "Some of us" only makes sense for a group; it may linger if the group shrank to one person.
+  const solo = f.adults + f.childrenAges.length === 1;
+  if (f.mode === "suggest" && (f.passport === null || (solo && f.passport === "some"))) e.passport = t.required;
   if (f.mode === "known" && f.hasFlights === null) e.hasFlights = t.required;
   if (f.mode === "known" && f.hasLodging === null) e.hasLodging = t.required;
   return e;
@@ -101,17 +108,18 @@ export function toRequest(f: FormState, lang: Lang): PlanRequest {
     consent: hasContact(f) && f.consent,
     consentVersion: hasContact(f) && f.consent ? CONSENT_VERSION : null,
     currency: f.currency,
-    budgetPerPerson: parseAmount(f.budget),
-    travelers: Number(f.travelers),
+    budgetTotal: parseAmount(f.budget),
+    adults: f.adults,
+    childrenAges: f.childrenAges.map((a) => a ?? 0),
     planType: f.planType as PlanType,
     startDate: f.startDate || null,
     endDate: f.endDate || null,
     days: Math.min(auto ?? Number(f.days), 30),
     origin: f.origin.trim(),
-    nationality: f.nationality.trim(),
+    nationalities: f.nationalities,
   };
   return f.mode === "suggest"
-    ? { mode: "suggest", ...common, hasPassport: !!f.hasPassport, visas: f.hasPassport ? f.visas : [] }
+    ? { mode: "suggest", ...common, passport: f.passport ?? "none", visas: f.passport === "none" ? [] : f.visas }
     : { mode: "known", ...common, destination: f.destination.trim(), hasFlights: !!f.hasFlights, hasLodging: !!f.hasLodging };
 }
 

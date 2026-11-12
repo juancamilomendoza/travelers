@@ -1,8 +1,9 @@
 import { useState, type FormEvent } from "react";
 import { planLabels, visaLabels, type dict } from "../i18n";
 import { daysBetween, validateTrip, type Errors, type FormState } from "../form";
-import { CURRENCIES, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
-import { Chip, Field, YesNo } from "./ui";
+import { CURRENCIES, MAX_CHILDREN, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
+import { Chip, Choice, Counter, Field, YesNo } from "./ui";
+import NationalityPicker from "./NationalityPicker";
 import PlaceInput from "./PlaceInput";
 import { COUNTRIES, DESTINATIONS, ORIGIN_CITIES } from "../places";
 
@@ -25,6 +26,8 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
     setForm(patch);
   };
   const autoDays = daysBetween(form.startDate, form.endDate);
+  const kids = form.childrenAges.length;
+  const room = MAX_TRAVELERS - form.adults - kids;
 
   function submit(e: FormEvent) {
     e.preventDefault();
@@ -73,10 +76,75 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
         <Field label={t.origin} error={errors.origin} htmlFor="origin">
           <PlaceInput id="origin" options={ORIGIN_CITIES} placeholder={t.originPh} value={form.origin} onChange={(v) => set({ origin: v })} />
         </Field>
-        <Field label={t.nationality} error={errors.nationality} htmlFor="nationality">
-          <PlaceInput id="nationality" options={COUNTRIES[lang]} placeholder={t.nationalityPh} value={form.nationality} onChange={(v) => set({ nationality: v })} />
+        <Field label={t.nationalities} error={errors.nationalities} htmlFor="nationalities">
+          <NationalityPicker
+            id="nationalities"
+            options={COUNTRIES[lang]}
+            placeholder={form.nationalities.length ? t.nationalityMorePh : t.nationalityPh}
+            hint={t.nationalitiesHint}
+            removeLabel={t.remove}
+            value={form.nationalities}
+            onChange={(v) => set({ nationalities: v })}
+          />
         </Field>
       </div>
+
+      <fieldset>
+        <legend className="label">{t.group}</legend>
+        <div className="divide-y divide-stone-200 rounded-2xl border border-stone-200 px-4 dark:divide-stone-800 dark:border-stone-800">
+          <Counter
+            id="adults"
+            label={t.adults}
+            hint={t.adultsHint}
+            value={form.adults}
+            min={1}
+            max={form.adults + room}
+            onChange={(v) => set({ adults: v })}
+            decLabel={t.less}
+            incLabel={t.more}
+          />
+          <Counter
+            id="children"
+            label={t.children}
+            hint={t.childrenHint}
+            value={kids}
+            min={0}
+            max={Math.min(MAX_CHILDREN, kids + room)}
+            onChange={(v) => set({ childrenAges: v > kids ? [...form.childrenAges, null] : form.childrenAges.slice(0, v) })}
+            decLabel={t.less}
+            incLabel={t.more}
+          />
+          {kids > 0 && (
+            <div className="grid grid-cols-2 gap-3 py-3 sm:grid-cols-3">
+              {form.childrenAges.map((age, i) => (
+                <div key={i}>
+                  <label htmlFor={`child-${i}`} className="mb-1 block text-xs text-stone-500 dark:text-stone-400">
+                    {t.childN(i + 1)}
+                  </label>
+                  <select
+                    id={`child-${i}`}
+                    className="input"
+                    aria-invalid={!!errors.childrenAges && age === null}
+                    value={age ?? ""}
+                    onChange={(e) => set({ childrenAges: form.childrenAges.map((a, j) => (j === i ? Number(e.target.value) : a)) })}
+                  >
+                    <option value="" disabled>
+                      {t.agePick}
+                    </option>
+                    {Array.from({ length: 18 }, (_, a) => (
+                      <option key={a} value={a}>
+                        {t.age(a)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {errors.adults && <p className="error">{errors.adults}</p>}
+        {errors.childrenAges && <p className="error">{errors.childrenAges}</p>}
+      </fieldset>
 
       <div className="grid gap-5 sm:grid-cols-[8rem_1fr]">
         <Field label={t.currency} htmlFor="currency">
@@ -86,7 +154,7 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
             ))}
           </select>
         </Field>
-        <Field label={form.mode === "known" ? t.budgetKnown : t.budgetSuggest} error={errors.budget} htmlFor="budget">
+        <Field label={form.mode === "known" ? t.budgetKnown : t.budgetSuggest} hint={t.budgetHint} error={errors.budget} htmlFor="budget">
           <input
             id="budget"
             className="input"
@@ -98,10 +166,7 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
         </Field>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Field label={t.travelers} error={errors.travelers} htmlFor="travelers">
-          <input id="travelers" className="input" type="number" min={1} max={20} value={form.travelers} onChange={(e) => set({ travelers: e.target.value })} />
-        </Field>
+      <div>
         <Field label={t.planType} error={errors.planType} htmlFor="planType">
           <select id="planType" className="input" value={form.planType} onChange={(e) => set({ planType: e.target.value as PlanType })}>
             <option value="" disabled>
@@ -146,10 +211,16 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
 
       {form.mode === "suggest" ? (
         <>
-          <YesNo label={t.passport} value={form.hasPassport} onChange={(v) => set({ hasPassport: v })} yes={t.yes} no={t.no} error={errors.hasPassport} />
-          {form.hasPassport && (
+          <Choice
+            label={form.adults + kids > 1 ? t.passportGroup : t.passport}
+            value={form.passport}
+            options={PASSPORT.filter((p) => p !== "some" || form.adults + kids > 1).map((p) => ({ value: p, label: t.passportOptions[p] }))}
+            onChange={(v) => set({ passport: v })}
+            error={errors.passport}
+          />
+          {form.passport && form.passport !== "none" && (
             <fieldset>
-              <legend className="label">{t.visas}</legend>
+              <legend className="label">{form.adults + kids > 1 ? t.visasGroup : t.visas}</legend>
               <div className="flex flex-wrap gap-2">
                 {VISAS.map((v) => (
                   <Chip

@@ -21,6 +21,7 @@ tiene destino. Cada registro se guarda en Supabase con la autorización de datos
 ## Puesta en marcha
 
 1. **Supabase**: abre tu proyecto > SQL Editor, pega el contenido de `supabase/schema.sql` y ejecútalo.
+   Si la base ya existía, ejecuta solo los archivos `supabase/00X_*.sql` que aún no hayas corrido, en orden.
    Luego, en Project Settings > API, copia la *Project URL* y la clave *service_role*.
 2. **Netlify**: Add new site > Import from GitHub > este repositorio. La configuración de build ya está en `netlify.toml`.
 3. En Netlify > Site configuration > Environment variables, crea:
@@ -43,7 +44,8 @@ npm run build      # revisa tipos y genera dist/
 ## Ver los registros
 
 En Supabase > Table Editor > `leads`. Cada fila trae los datos del viajero, la versión del texto de
-autorización que aceptó, el presupuesto (también convertido a COP), el plan generado y si pidió que una
+autorización que aceptó, el presupuesto total del grupo (también convertido a COP), cuántos adultos y
+niños viajan con las edades de los niños, las nacionalidades del grupo, el plan generado y si pidió que una
 agencia lo contacte (`wants_contact`). Desde ahí se puede exportar a CSV.
 
 ## Pendiente antes de vender datos

@@ -18,20 +18,23 @@ const SYSTEM = `You are the trip planner of Pa Donde Vamos, a web app for travel
 You receive one trip request as JSON and answer with realistic, concrete suggestions.
 
 Rules:
-- All costs are estimates in the request's currency ("currency") and are TOTALS for the whole group ("travelers" people) for the whole trip ("days" days), unless a field says otherwise.
-- The total budget is budgetPerPerson x travelers. Every suggestion's total must fit inside it.
-- If nothing reasonable fits, set budgetTooLow to true, give minimumBudgetPerPerson (in the request currency) and still return your cheapest realistic option. Otherwise budgetTooLow is false and minimumBudgetPerPerson is 0.
+- The group is "adults" adults plus one child per entry in "childrenAges" (each number is that child's age in years; 0 = under one year old).
+- All costs are estimates in the request's currency ("currency") and are TOTALS for the whole group for the whole trip ("days" days), unless a field says otherwise.
+- budgetTotal is the total budget for the whole group and the whole trip. Every suggestion's total must fit inside it.
+- If nothing reasonable fits, set budgetTooLow to true, give minimumBudget (the minimum total for the whole group, in the request currency) and still return your cheapest realistic option. Otherwise budgetTooLow is false and minimumBudget is 0.
 - Fit the suggestions to planType (e.g. bachelor/bachelorette: nightlife and group plans; family: kid-friendly, little travel; proposal/honeymoon/couple: romantic places; rest: calm and nature; first_trip: easy, safe, well connected places).
+- When there are children, every activity, lodging and restaurant must suit their ages: no nightlife-only plans, no activities with age or height limits they don't meet, family rooms or apartments, short transfers for babies and toddlers. Price children realistically: babies under 2 usually fly on a lap for a small fee and stay free; many tickets are reduced for children.
 - If startDate is given, consider the season (high/low, weather) for those dates.
 - Use real, well-known place names. Do not invent prices that are wildly off; when unsure, round to a typical value.
-- The traveler leaves from "origin" (a city) and holds the "nationality" given. Infer the origin country from the city.
-- requirements: one short sentence on passport/visa/entry needs for that nationality, ending with a reminder to verify them before buying. For domestic destinations say no passport is needed (mention any local entry card, such as San Andres's tourist card in Colombia).
+- The group leaves from "origin" (a city). Infer the origin country from the city. "nationalities" lists every nationality in the group (one or more).
+- requirements: short text on passport/visa/entry needs. If the group has several nationalities and the needs differ, say what each nationality needs (one short clause each). Mention documents for minors when there are children (e.g. birth certificate, travel permit if a parent is not traveling). End with a reminder to verify them before buying. For a destination inside the origin country, say whether a passport is needed for each nationality (mention any local entry card, such as San Andres's tourist card in Colombia).
 - Write every text field in the language given by "lang" ("es" = Spanish, "en" = English). Keep each text short (one sentence).
 
 Mode "suggest" (the traveler wants destination ideas):
 - Return exactly 3 destinations, from cheapest to most expensive total.
-- Without passport (hasPassport false): only destinations inside the origin country, or countries this nationality can enter with a national ID card (e.g. Andean Community, Mercosur, EU/Schengen).
-- With passport: at least one international destination unless the budget truly cannot reach one; only countries this nationality can enter without a visa, with an eVisa/ETA, or with one of the visas listed in "visas".
+- Every destination must be one that EVERY nationality in the group can enter. When in doubt for any one of them, pick another destination.
+- passport "none" (nobody has a passport) or "some" (not everyone has one): only destinations inside the origin country, or countries that every nationality in the group can enter with a national ID card (e.g. Andean Community, Mercosur, EU/Schengen). With "some", say in requirements that whoever lacks a passport should get one to open more options.
+- passport "all": at least one international destination unless the budget truly cannot reach one; only countries every nationality can enter without a visa, with an eVisa/ETA, or with one of the visas listed in "visas" (visas that every traveler holds).
 - Do not default to Colombia: pick destinations that make sense from the origin city and fit the budget.
 - transport includes the round trip from "origin" plus local transport.
 - activities: 3 to 5 items. food.places: 1 or 2 typical places or dishes.
@@ -40,7 +43,7 @@ Mode "known" (the traveler already chose "destination"):
 - Return a day-by-day itinerary with one entry per day (max "days" entries), each with 1 to 3 activities and 1 or 2 restaurants (priceLevel is "$", "$$" or "$$$").
 - lodging: null if hasLodging is true; otherwise suggest lodging.
 - transportToDestination: null if hasFlights is true; otherwise estimate the round trip from "origin".
-- budgetPerPerson is what each person wants to spend AT the destination (plus lodging/transport to it only if they don't have them).
+- budgetTotal is what the whole group wants to spend AT the destination (plus lodging/transport to it only if they don't have them).
 - tips: 2 or 3 short practical tips.`;
 
 function json(body: PlanResponse, status = 200) {
@@ -63,17 +66,18 @@ function tripOnly(r: PlanRequest) {
     mode: r.mode,
     lang: r.lang,
     currency: r.currency,
-    budgetPerPerson: r.budgetPerPerson,
-    travelers: r.travelers,
+    budgetTotal: r.budgetTotal,
+    adults: r.adults,
+    childrenAges: [...r.childrenAges].sort((a, b) => a - b),
     planType: r.planType,
     startDate: r.startDate,
     endDate: r.endDate,
     days: r.days,
     origin: r.origin,
-    nationality: r.nationality,
+    nationalities: [...r.nationalities].sort(),
   };
   return r.mode === "suggest"
-    ? { ...base, hasPassport: r.hasPassport, visas: [...r.visas].sort() }
+    ? { ...base, passport: r.passport, visas: [...r.visas].sort() }
     : { ...base, destination: r.destination, hasFlights: r.hasFlights, hasLodging: r.hasLodging };
 }
 
@@ -118,6 +122,9 @@ export default async (req: Request) => {
 
   const db = supabase();
   const trip = tripOnly(r);
+  const travelers = r.adults + r.childrenAges.length;
+  const budgetTotalCop = await toCop(r.budgetTotal, r.currency);
+  const perPerson = (n: number | null) => (n === null ? null : Math.round(n / travelers));
   const cacheKey = createHash("sha256").update(JSON.stringify(trip)).digest("hex");
 
   // 1. Save the lead first, so it is kept even if the AI step fails or the user leaves.
@@ -134,16 +141,23 @@ export default async (req: Request) => {
         consent_version: r.consent ? r.consentVersion : null,
         consent_at: r.consent ? new Date().toISOString() : null,
         currency: r.currency,
-        budget_per_person: r.budgetPerPerson,
-        budget_per_person_cop: await toCop(r.budgetPerPerson, r.currency),
-        travelers: r.travelers,
+        budget_total: r.budgetTotal,
+        budget_total_cop: budgetTotalCop,
+        // Per-person columns are kept, derived from the total, so older reports still work.
+        budget_per_person: perPerson(r.budgetTotal),
+        budget_per_person_cop: perPerson(budgetTotalCop),
+        travelers,
+        adults: r.adults,
+        children_ages: r.childrenAges,
         plan_type: r.planType,
         start_date: r.startDate,
         end_date: r.endDate,
         days: r.days,
         origin: r.origin,
-        nationality: r.nationality,
-        has_passport: r.mode === "suggest" ? r.hasPassport : null,
+        nationalities: r.nationalities,
+        nationality: r.nationalities.join(", "),
+        passport_status: r.mode === "suggest" ? r.passport : null,
+        has_passport: r.mode === "suggest" ? r.passport === "all" : null,
         visas: r.mode === "suggest" ? r.visas : null,
         destination: r.mode === "known" ? r.destination : null,
         has_flights: r.mode === "known" ? r.hasFlights : null,
