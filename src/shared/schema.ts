@@ -21,12 +21,13 @@ const common = {
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
   days: z.number().int().min(1).max(30),
+  origin: z.string().trim().min(2).max(80),
+  nationality: z.string().trim().min(2).max(60),
 };
 
 export const SuggestRequest = z.object({
   mode: z.literal("suggest"),
   ...common,
-  origin: z.string().trim().min(2).max(80),
   hasPassport: z.boolean(),
   visas: z.array(z.enum(VISAS)).max(VISAS.length),
 });

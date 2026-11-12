@@ -43,3 +43,6 @@ create table if not exists public.plan_cache (
 
 alter table public.leads enable row level security;
 alter table public.plan_cache enable row level security;
+
+-- Added 2026-11-12: travelers from any country.
+alter table public.leads add column if not exists nationality text;

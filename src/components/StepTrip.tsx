@@ -4,7 +4,7 @@ import { daysBetween, validateTrip, type Errors, type FormState } from "../form"
 import { CURRENCIES, PLAN_TYPES, VISAS, type Lang, type PlanType } from "../shared/constants";
 import { Chip, Field, YesNo } from "./ui";
 import PlaceInput from "./PlaceInput";
-import { DESTINATIONS, ORIGIN_CITIES } from "../places";
+import { COUNTRIES, DESTINATIONS, ORIGIN_CITIES } from "../places";
 
 type Props = {
   t: (typeof dict)["es"];
@@ -17,8 +17,13 @@ type Props = {
 
 const today = () => new Date().toISOString().slice(0, 10);
 
-export default function StepTrip({ t, lang, form, set, onBack, onSubmit }: Props) {
+export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit }: Props) {
   const [errors, setErrors] = useState<Errors>({});
+  // Editing a field clears its error message, so fixed fields stop showing red.
+  const set = (patch: Partial<FormState>) => {
+    setErrors((e) => Object.fromEntries(Object.entries(e).filter(([k]) => !(k in patch))));
+    setForm(patch);
+  };
   const autoDays = daysBetween(form.startDate, form.endDate);
 
   function submit(e: FormEvent) {
@@ -58,15 +63,20 @@ export default function StepTrip({ t, lang, form, set, onBack, onSubmit }: Props
         ))}
       </div>
 
-      {form.mode === "known" ? (
+      {form.mode === "known" && (
         <Field label={t.destination} error={errors.destination} htmlFor="destination">
           <PlaceInput id="destination" options={DESTINATIONS} placeholder={t.destinationPh} value={form.destination} onChange={(v) => set({ destination: v })} />
         </Field>
-      ) : (
-        <Field label={t.origin} error={errors.origin} htmlFor="origin">
-          <PlaceInput id="origin" options={ORIGIN_CITIES} value={form.origin} onChange={(v) => set({ origin: v })} />
-        </Field>
       )}
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <Field label={t.origin} error={errors.origin} htmlFor="origin">
+          <PlaceInput id="origin" options={ORIGIN_CITIES} placeholder={t.originPh} value={form.origin} onChange={(v) => set({ origin: v })} />
+        </Field>
+        <Field label={t.nationality} error={errors.nationality} htmlFor="nationality">
+          <PlaceInput id="nationality" options={COUNTRIES[lang]} placeholder={t.nationalityPh} value={form.nationality} onChange={(v) => set({ nationality: v })} />
+        </Field>
+      </div>
 
       <div className="grid gap-5 sm:grid-cols-[8rem_1fr]">
         <Field label={t.currency} htmlFor="currency">
