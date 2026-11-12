@@ -71,3 +71,71 @@ export function Progress({ step, labels, stepOf }: { step: number; labels: strin
     </div>
   );
 }
+
+/** A − / + stepper for small whole numbers. */
+export function Counter({ id, label, hint, value, min, max, onChange, decLabel, incLabel }: {
+  id: string;
+  label: string;
+  hint: string;
+  value: number;
+  min: number;
+  max: number;
+  onChange: (v: number) => void;
+  decLabel: string;
+  incLabel: string;
+}) {
+  const btn =
+    "grid h-10 w-10 place-items-center rounded-full border border-stone-300 text-xl font-semibold leading-none transition hover:border-brand-600 hover:text-brand-700 disabled:cursor-not-allowed disabled:opacity-35 disabled:hover:border-stone-300 disabled:hover:text-inherit dark:border-stone-700 dark:hover:border-brand-500 dark:hover:text-brand-400";
+  return (
+    <div className="flex items-center justify-between gap-4 py-3">
+      <div id={id}>
+        <p className="font-semibold">{label}</p>
+        <p className="text-sm text-stone-500 dark:text-stone-400">{hint}</p>
+      </div>
+      <div className="flex items-center gap-3" role="group" aria-labelledby={id}>
+        <button type="button" className={btn} aria-label={`${decLabel} ${label}`} disabled={value <= min} onClick={() => onChange(value - 1)}>
+          −
+        </button>
+        <output className="w-6 text-center text-lg font-semibold tabular-nums" aria-live="polite">
+          {value}
+        </output>
+        <button type="button" className={btn} aria-label={`${incLabel} ${label}`} disabled={value >= max} onClick={() => onChange(value + 1)}>
+          +
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Pick one of a few options shown as buttons (like YesNo, with any number of options). */
+export function Choice<V extends string>({ label, value, options, onChange, error }: {
+  label: string;
+  value: V | null;
+  options: { value: V; label: string }[];
+  onChange: (v: V) => void;
+  error?: string;
+}) {
+  return (
+    <fieldset>
+      <legend className="label">{label}</legend>
+      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}>
+        {options.map((o) => (
+          <button
+            key={o.value}
+            type="button"
+            aria-pressed={value === o.value}
+            onClick={() => onChange(o.value)}
+            className={`rounded-xl border px-3 py-2.5 font-medium transition ${
+              value === o.value
+                ? "border-brand-600 bg-brand-50 text-brand-900 dark:border-brand-500 dark:bg-brand-900/40 dark:text-brand-100"
+                : "border-stone-300 bg-white hover:border-stone-400 dark:border-stone-700 dark:bg-stone-900 dark:hover:border-stone-500"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {error && <p className="error">{error}</p>}
+    </fieldset>
+  );
+}

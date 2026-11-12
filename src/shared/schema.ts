@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { CURRENCIES, LANGS, PLAN_TYPES, VISAS } from "./constants";
+import { CURRENCIES, LANGS, MAX_CHILDREN, MAX_NATIONALITIES, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS } from "./constants";
 
 export * from "./constants";
 
@@ -15,20 +15,24 @@ const common = {
   consent: z.boolean(),
   consentVersion: z.string().max(20).nullable(),
   currency: z.enum(CURRENCIES),
-  budgetPerPerson: z.number().positive().max(1_000_000_000),
-  travelers: z.number().int().min(1).max(20),
+  // Total budget for the whole group and the whole trip.
+  budgetTotal: z.number().positive().max(10_000_000_000),
+  adults: z.number().int().min(1).max(MAX_TRAVELERS),
+  // One entry per child (0 = under one year old).
+  childrenAges: z.array(z.number().int().min(0).max(17)).max(MAX_CHILDREN),
   planType: z.enum(PLAN_TYPES),
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
   days: z.number().int().min(1).max(30),
   origin: z.string().trim().min(2).max(80),
-  nationality: z.string().trim().min(2).max(60),
+  // Every nationality in the group, so suggestions work for all of them.
+  nationalities: z.array(z.string().trim().min(2).max(60)).min(1).max(MAX_NATIONALITIES),
 };
 
 export const SuggestRequest = z.object({
   mode: z.literal("suggest"),
   ...common,
-  hasPassport: z.boolean(),
+  passport: z.enum(PASSPORT),
   visas: z.array(z.enum(VISAS)).max(VISAS.length),
 });
 
@@ -42,6 +46,7 @@ export const KnownRequest = z.object({
 
 export const PlanRequest = z
   .discriminatedUnion("mode", [SuggestRequest, KnownRequest])
+  .refine((r) => r.adults + r.childrenAges.length <= MAX_TRAVELERS, { message: "too many travelers" })
   .refine((r) => !r.startDate || !r.endDate || r.endDate >= r.startDate, {
     message: "endDate must be on or after startDate",
   })
@@ -59,7 +64,7 @@ const costBlock = z.object({ description: z.string(), cost: z.number() });
 
 export const SuggestResult = z.object({
   budgetTooLow: z.boolean(),
-  minimumBudgetPerPerson: z.number(),
+  minimumBudget: z.number(),
   destinations: z.array(
     z.object({
       city: z.string(),
@@ -77,7 +82,7 @@ export const SuggestResult = z.object({
 
 export const KnownResult = z.object({
   budgetTooLow: z.boolean(),
-  minimumBudgetPerPerson: z.number(),
+  minimumBudget: z.number(),
   destination: z.string(),
   itinerary: z.array(
     z.object({

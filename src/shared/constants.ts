@@ -2,6 +2,8 @@
 
 export const CURRENCIES = ["COP", "USD", "EUR"] as const;
 export const LANGS = ["es", "en"] as const;
+/** Whether the travelers have a valid passport: everyone, some of them, or nobody. */
+export const PASSPORT = ["all", "some", "none"] as const;
 export const VISAS = ["us", "schengen", "uk", "canada", "mexico", "other"] as const;
 export const PLAN_TYPES = [
   "bachelor",
@@ -22,6 +24,12 @@ export const PLAN_TYPES = [
 export type Currency = (typeof CURRENCIES)[number];
 export type Lang = (typeof LANGS)[number];
 export type Visa = (typeof VISAS)[number];
+export type Passport = (typeof PASSPORT)[number];
+
+/** Group size limits. Babies count as children (age 0). */
+export const MAX_TRAVELERS = 20;
+export const MAX_CHILDREN = 10;
+export const MAX_NATIONALITIES = 6;
 export type PlanType = (typeof PLAN_TYPES)[number];
 
 /** Version of the consent text shown on screen 1. Bump it whenever the text changes. */

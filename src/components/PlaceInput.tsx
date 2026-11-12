@@ -1,5 +1,5 @@
 import { useId, useState } from "react";
-import { matchPlaces } from "../places";
+import { matchPlaces, normalize } from "../places";
 
 type Props = {
   id: string;
@@ -7,17 +7,26 @@ type Props = {
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  /** When set, a chosen or typed value is handed over here (Enter, click or leaving the field) instead of staying in the box. */
+  onPick?: (v: string) => void;
+  "aria-describedby"?: string;
 };
 
 /** Text input with a suggestion list (accessible combobox). The user can still type any place. */
-export default function PlaceInput({ id, value, onChange, options, placeholder }: Props) {
+export default function PlaceInput({ id, value, onChange, options, placeholder, onPick, "aria-describedby": describedBy }: Props) {
   const listId = useId();
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
   const matches = open ? matchPlaces(options, value) : [];
 
+  /** Typed text becomes the exact option, or the first suggestion, or stays as typed. */
+  const best = (v: string) => options.find((o) => normalize(o) === normalize(v)) ?? matchPlaces(options, v, 1)[0] ?? v.trim();
+
   function pick(v: string) {
-    onChange(v);
+    if (onPick) {
+      onPick(v);
+      onChange("");
+    } else onChange(v);
     setOpen(false);
     setActive(-1);
   }
@@ -34,12 +43,16 @@ export default function PlaceInput({ id, value, onChange, options, placeholder }
         aria-controls={listId}
         aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
         placeholder={placeholder}
+        aria-describedby={describedBy}
         value={value}
         onFocus={(e) => {
           e.target.select(); // a prefilled city is replaced as soon as the user types
           setOpen(true);
         }}
-        onBlur={() => setOpen(false)}
+        onBlur={() => {
+          setOpen(false);
+          if (onPick && value.trim().length >= 2) pick(best(value));
+        }}
         onChange={(e) => {
           onChange(e.target.value);
           setOpen(true);
@@ -56,6 +69,9 @@ export default function PlaceInput({ id, value, onChange, options, placeholder }
           } else if (e.key === "Enter" && active >= 0 && matches.at(active)) {
             e.preventDefault();
             pick(matches.at(active)!);
+          } else if (e.key === "Enter" && onPick && value.trim().length >= 2) {
+            e.preventDefault(); // add the typed country instead of submitting the form
+            pick(best(value));
           } else if (e.key === "Escape") {
             setOpen(false);
           }
