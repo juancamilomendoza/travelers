@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { dict } from "../i18n";
 import { money } from "../form";
-import type { Currency, KnownResult, Lang, SuggestResult } from "../shared/schema";
+import type { Currency, KnownResult, Lang, LocalResult, SuggestResult } from "../shared/schema";
 
 type T = (typeof dict)["es"];
 type Common = { t: T; lang: Lang; currency: Currency; budgetTotal: number };
@@ -168,6 +168,51 @@ export function KnownView({ t, lang, currency, budgetTotal, result }: Common & {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+export function LocalView({ t, lang, currency, budgetTotal, result }: Common & { result: LocalResult }) {
+  const fmt = (n: number) => money(n, currency, lang);
+  return (
+    <div className="space-y-5">
+      <header>
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{t.s3Local(result.city)}</h1>
+        <p className="mt-1 text-sm text-stone-500 dark:text-stone-400">{t.estimatedLocal}</p>
+      </header>
+      {result.budgetTooLow && <TooLow t={t} min={result.minimumBudget} fmt={fmt} />}
+
+      <ol className="space-y-4">
+        {result.places.map((p, i) => (
+          <li key={i} className="card">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{p.kind}</p>
+                <h2 className="text-lg font-bold">{p.name}</h2>
+                <p className="text-sm text-stone-500 dark:text-stone-400">📍 {p.area}</p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className={`font-bold tabular-nums ${p.cost > budgetTotal ? "text-amber-700 dark:text-amber-400" : ""}`}>{fmt(p.cost)}</p>
+                <p className="text-xs text-stone-500 dark:text-stone-400">
+                  {t.forGroup} · {p.priceLevel}
+                </p>
+              </div>
+            </div>
+            <p className="mt-2 text-stone-700 dark:text-stone-300">{p.why}</p>
+          </li>
+        ))}
+      </ol>
+
+      {result.tips.length > 0 && (
+        <div className="card">
+          <p className="font-semibold">💡 {t.tips}</p>
+          <ul className="mt-1 list-disc space-y-1 pl-5 text-sm text-stone-600 dark:text-stone-400">
+            {result.tips.map((tip, i) => (
+              <li key={i}>{tip}</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -8,7 +8,7 @@ const content = {
       "Esta política explica cómo Pa Donde Vamos trata los datos personales que recibe a través de este sitio, conforme a la Ley 1581 de 2012 y el Decreto 1377 de 2013 de Colombia.",
     sections: [
       ["Responsable", "[NOMBRE O RAZÓN SOCIAL], identificado con [NIT/CC], con domicilio en [CIUDAD], Colombia. Contacto: [CORREO DE CONTACTO]."],
-      ["Datos que recogemos", "Nombre, correo electrónico, número de WhatsApp, presupuesto, número de adultos y de niños con sus edades (sin nombres), nacionalidades del grupo, tipo de plan, fechas, destino, ciudad de salida, y si cuentan con pasaporte, visas, vuelos u hospedaje. Nombre, correo y WhatsApp son opcionales: si no los dejas, guardamos solo lo que buscas, sin datos que te identifiquen, para estadísticas."],
+      ["Datos que recogemos", "Nombre, correo electrónico, número de WhatsApp, presupuesto, número de adultos y de niños con sus edades (sin nombres), nacionalidades del grupo, tipo de plan, fechas, destino, ciudad de salida, y si cuentan con pasaporte, visas, vuelos u hospedaje; en “Un plan en mi ciudad”, la ciudad, qué quieren hacer y cuándo. Si usas el botón “Usar mi ubicación”, tu navegador te pide permiso y enviamos tu ubicación aproximada (redondeada a cerca de 1 km) al servicio BigDataCloud solo para saber en qué ciudad estás; no guardamos tu ubicación. Nombre, correo y WhatsApp son opcionales: si no los dejas, guardamos solo lo que buscas, sin datos que te identifiquen, para estadísticas."],
       [
         "Para qué los usamos",
         "Para generar sugerencias de viaje, enviarte tu plan, y compartirlos con agencias de viaje aliadas que podrán contactarte con ofertas. También para estadísticas internas sobre preferencias de viaje.",
@@ -28,7 +28,7 @@ const content = {
       "This policy explains how Pa Donde Vamos processes the personal data it receives through this site, under Colombian Law 1581 of 2012 and Decree 1377 of 2013.",
     sections: [
       ["Data controller", "[NAME OR COMPANY], ID [NIT/CC], based in [CITY], Colombia. Contact: [CONTACT EMAIL]."],
-      ["Data we collect", "Name, email, WhatsApp number, budget, number of adults and children with their ages (no names), the group's nationalities, trip type, dates, destination, departure city, and whether you have a passport, visas, flights or lodging. Name, email and WhatsApp are optional: if you leave them out, we only keep what you searched for, with nothing that identifies you, for statistics."],
+      ["Data we collect", "Name, email, WhatsApp number, budget, number of adults and children with their ages (no names), the group's nationalities, trip type, dates, destination, departure city, and whether you have a passport, visas, flights or lodging; for “A plan in my city”, the city, what you want to do and when. If you use the “Use my location” button, your browser asks for permission and we send your approximate location (rounded to about 1 km) to the BigDataCloud service only to find your city; we do not store your location. Name, email and WhatsApp are optional: if you leave them out, we only keep what you searched for, with nothing that identifies you, for statistics."],
       [
         "How we use it",
         "To generate travel suggestions, send you your plan, and share it with partner travel agencies that may contact you with offers. Also for internal statistics on travel preferences.",

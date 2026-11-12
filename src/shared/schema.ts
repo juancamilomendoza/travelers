@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-import { CURRENCIES, LANGS, MAX_CHILDREN, MAX_NATIONALITIES, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS } from "./constants";
+import { CURRENCIES, INTERESTS, LANGS, WHEN, MAX_CHILDREN, MAX_NATIONALITIES, MAX_TRAVELERS, PASSPORT, PLAN_TYPES, VISAS } from "./constants";
 
 export * from "./constants";
 
 const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
-const common = {
+// Fields every request has, whatever the mode.
+const base = {
   lang: z.enum(LANGS),
   // Contact data is optional: people can get a plan without leaving it.
   name: z.string().trim().min(2).max(80).nullable(),
@@ -20,6 +21,11 @@ const common = {
   adults: z.number().int().min(1).max(MAX_TRAVELERS),
   // One entry per child (0 = under one year old).
   childrenAges: z.array(z.number().int().min(0).max(17)).max(MAX_CHILDREN),
+};
+
+// Fields of a trip (both travel modes).
+const common = {
+  ...base,
   planType: z.enum(PLAN_TYPES),
   startDate: isoDate.nullable(),
   endDate: isoDate.nullable(),
@@ -44,10 +50,21 @@ export const KnownRequest = z.object({
   hasLodging: z.boolean(),
 });
 
+export const LocalRequest = z.object({
+  mode: z.literal("local"),
+  ...base,
+  // The city where the group is (typed, or found from the browser location).
+  city: z.string().trim().min(2).max(80),
+  interests: z.array(z.enum(INTERESTS)).min(1).max(INTERESTS.length),
+  when: z.enum(WHEN),
+  date: isoDate.nullable(),
+});
+
 export const PlanRequest = z
-  .discriminatedUnion("mode", [SuggestRequest, KnownRequest])
+  .discriminatedUnion("mode", [SuggestRequest, KnownRequest, LocalRequest])
   .refine((r) => r.adults + r.childrenAges.length <= MAX_TRAVELERS, { message: "too many travelers" })
-  .refine((r) => !r.startDate || !r.endDate || r.endDate >= r.startDate, {
+  .refine((r) => r.mode !== "local" || r.when !== "date" || !!r.date, { message: "date is required" })
+  .refine((r) => r.mode === "local" || !r.startDate || !r.endDate || r.endDate >= r.startDate, {
     message: "endDate must be on or after startDate",
   })
   // Anyone who leaves personal data must accept the data processing authorization (Ley 1581).
@@ -100,10 +117,29 @@ export const KnownResult = z.object({
   requirements: z.string(),
 });
 
+export const LocalResult = z.object({
+  budgetTooLow: z.boolean(),
+  minimumBudget: z.number(),
+  city: z.string(),
+  places: z.array(
+    z.object({
+      name: z.string(),
+      kind: z.string(),
+      area: z.string(),
+      why: z.string(),
+      priceLevel: z.string(),
+      cost: z.number(),
+    }),
+  ),
+  tips: z.array(z.string()),
+});
+
 export type SuggestResult = z.infer<typeof SuggestResult>;
+export type LocalResult = z.infer<typeof LocalResult>;
 export type KnownResult = z.infer<typeof KnownResult>;
 
 export type PlanResponse =
   | { ok: true; mode: "suggest"; leadId: string | null; result: SuggestResult }
   | { ok: true; mode: "known"; leadId: string | null; result: KnownResult }
+  | { ok: true; mode: "local"; leadId: string | null; result: LocalResult }
   | { ok: false; error: "invalid" | "ai_unavailable" | "server" };
