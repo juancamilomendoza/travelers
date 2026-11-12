@@ -8,11 +8,12 @@ const isoDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 
 const common = {
   lang: z.enum(LANGS),
-  name: z.string().trim().min(2).max(80),
-  email: z.string().trim().email().max(120),
-  whatsapp: z.string().trim().regex(/^\+?[0-9 ]{7,20}$/),
-  consent: z.literal(true),
-  consentVersion: z.string().max(20),
+  // Contact data is optional: people can get a plan without leaving it.
+  name: z.string().trim().min(2).max(80).nullable(),
+  email: z.string().trim().email().max(120).nullable(),
+  whatsapp: z.string().trim().regex(/^\+?[0-9 ]{7,20}$/).nullable(),
+  consent: z.boolean(),
+  consentVersion: z.string().max(20).nullable(),
   currency: z.enum(CURRENCIES),
   budgetPerPerson: z.number().positive().max(1_000_000_000),
   travelers: z.number().int().min(1).max(20),
@@ -42,6 +43,10 @@ export const PlanRequest = z
   .discriminatedUnion("mode", [SuggestRequest, KnownRequest])
   .refine((r) => !r.startDate || !r.endDate || r.endDate >= r.startDate, {
     message: "endDate must be on or after startDate",
+  })
+  // Anyone who leaves personal data must accept the data processing authorization (Ley 1581).
+  .refine((r) => r.consent || (!r.name && !r.email && !r.whatsapp), {
+    message: "consent is required when contact data is given",
   });
 
 export type PlanRequest = z.infer<typeof PlanRequest>;

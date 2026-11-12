@@ -54,12 +54,20 @@ export const parseAmount = (s: string) => Number(s.replace(/[^\d]/g, ""));
 
 export type Errors = Partial<Record<keyof FormState, string>>;
 
+/** The WhatsApp field starts with "+57 ", so a value with only a country code counts as empty. */
+const phoneOrNull = (s: string) => (s.replace(/\D/g, "").length > 3 ? s.trim() : null);
+const textOrNull = (s: string) => s.trim() || null;
+
+export const hasContact = (f: FormState) => !!(textOrNull(f.name) || textOrNull(f.email) || phoneOrNull(f.whatsapp));
+
+/** All three fields are optional; whatever is filled in must be valid, and then consent is required. */
 export function validateAbout(f: FormState, t: { required: string; invalidEmail: string; invalidPhone: string; mustConsent: string }): Errors {
   const e: Errors = {};
-  if (f.name.trim().length < 2) e.name = t.required;
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = t.invalidEmail;
-  if (!/^\+?[0-9 ]{7,20}$/.test(f.whatsapp.trim()) || f.whatsapp.replace(/\D/g, "").length < 7) e.whatsapp = t.invalidPhone;
-  if (!f.consent) e.consent = t.mustConsent;
+  if (f.name.trim() && f.name.trim().length < 2) e.name = t.required;
+  if (f.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(f.email.trim())) e.email = t.invalidEmail;
+  const phone = phoneOrNull(f.whatsapp);
+  if (phone && (!/^\+?[0-9 ]{7,20}$/.test(phone) || phone.replace(/\D/g, "").length < 7)) e.whatsapp = t.invalidPhone;
+  if (hasContact(f) && !f.consent) e.consent = t.mustConsent;
   return e;
 }
 
@@ -84,11 +92,11 @@ export function toRequest(f: FormState, lang: Lang): PlanRequest {
   const auto = daysBetween(f.startDate, f.endDate);
   const common = {
     lang,
-    name: f.name.trim(),
-    email: f.email.trim(),
-    whatsapp: f.whatsapp.trim(),
-    consent: true as const,
-    consentVersion: CONSENT_VERSION,
+    name: textOrNull(f.name),
+    email: textOrNull(f.email),
+    whatsapp: phoneOrNull(f.whatsapp),
+    consent: hasContact(f) && f.consent,
+    consentVersion: hasContact(f) && f.consent ? CONSENT_VERSION : null,
     currency: f.currency,
     budgetPerPerson: parseAmount(f.budget),
     travelers: Number(f.travelers),

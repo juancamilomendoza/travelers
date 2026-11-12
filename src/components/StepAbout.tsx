@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import type { dict } from "../i18n";
-import { validateAbout, type Errors, type FormState } from "../form";
+import { hasContact, validateAbout, type Errors, type FormState } from "../form";
 import { Field } from "./ui";
 
 type Props = {
@@ -27,15 +27,15 @@ export default function StepAbout({ t, form, set, onNext }: Props) {
         <p className="mt-1 text-stone-600 dark:text-stone-400">{t.s1Lead}</p>
       </div>
 
-      <Field label={t.name} error={errors.name} htmlFor="name">
+      <Field label={`${t.name} (${t.optional})`} error={errors.name} htmlFor="name">
         <input id="name" className="input" autoComplete="name" value={form.name} onChange={(e) => set({ name: e.target.value })} />
       </Field>
 
-      <Field label={t.email} error={errors.email} htmlFor="email">
+      <Field label={`${t.email} (${t.optional})`} error={errors.email} htmlFor="email">
         <input id="email" type="email" className="input" autoComplete="email" value={form.email} onChange={(e) => set({ email: e.target.value })} />
       </Field>
 
-      <Field label={t.whatsapp} error={errors.whatsapp} hint={t.whatsappHint} htmlFor="whatsapp">
+      <Field label={`${t.whatsapp} (${t.optional})`} error={errors.whatsapp} hint={t.whatsappHint} htmlFor="whatsapp">
         <input id="whatsapp" type="tel" className="input" autoComplete="tel" value={form.whatsapp} onChange={(e) => set({ whatsapp: e.target.value })} />
       </Field>
 
@@ -60,7 +60,7 @@ export default function StepAbout({ t, form, set, onNext }: Props) {
 
       <div className="flex justify-end">
         <button type="submit" className="btn-primary w-full sm:w-auto">
-          {t.next} →
+          {hasContact(form) ? t.next : t.skip} →
         </button>
       </div>
     </form>
