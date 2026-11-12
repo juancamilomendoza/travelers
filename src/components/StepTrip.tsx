@@ -73,9 +73,6 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
       )}
 
       <div className="grid gap-5 sm:grid-cols-2">
-        <Field label={t.origin} error={errors.origin} htmlFor="origin">
-          <PlaceInput id="origin" options={ORIGIN_CITIES} placeholder={t.originPh} value={form.origin} onChange={(v) => set({ origin: v })} />
-        </Field>
         <Field label={t.nationalities} error={errors.nationalities} htmlFor="nationalities">
           <NationalityPicker
             id="nationalities"
@@ -86,6 +83,9 @@ export default function StepTrip({ t, lang, form, set: setForm, onBack, onSubmit
             value={form.nationalities}
             onChange={(v) => set({ nationalities: v })}
           />
+        </Field>
+        <Field label={t.origin} error={errors.origin} htmlFor="origin">
+          <PlaceInput id="origin" options={ORIGIN_CITIES} placeholder={t.originPh} value={form.origin} onChange={(v) => set({ origin: v })} />
         </Field>
       </div>
 
