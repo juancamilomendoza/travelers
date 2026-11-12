@@ -29,6 +29,11 @@ tiene destino, o 4 a 5 lugares para salir en su propia ciudad. Cada registro se 
    - `SUPABASE_URL`: la Project URL de Supabase.
    - `SUPABASE_SERVICE_ROLE_KEY`: la clave service_role de Supabase.
 
+   - `GOOGLE_MAPS_API_KEY` (opcional): clave de Google Cloud con **Places API (New)** activada. Con ella, cada lugar
+     sugerido se busca en Google Maps para mostrar dirección, foto, teléfono, web y calificación reales; los lugares
+     que Google no encuentra se descartan en "Un plan en mi ciudad". Sin ella, la app funciona igual que antes.
+   - `GOOGLE_PLACES_LEVEL` (opcional): `full` (por defecto) o `basic` (solo dirección, foto y link a Maps, más barato).
+
    Estas claves nunca llegan al navegador. No las subas al repositorio.
 4. Vuelve a publicar el sitio (Deploys > Trigger deploy).
 

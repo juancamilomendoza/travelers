@@ -8,8 +8,14 @@ import {
   LocalResult,
   PlanRequest,
   SuggestResult,
+  type KnownView,
+  type LocalView,
   type PlanResponse,
 } from "../../src/shared/schema.ts";
+import { findPlace, placesEnabled } from "../lib/places.mts";
+
+// Google Maps lookups per answer in "known" mode (restaurants), to keep the cost per search bounded.
+const MAX_RESTAURANT_LOOKUPS = 6;
 
 // Cheapest Claude model, chosen by the project owner to keep the cost per search low.
 const MODEL = "claude-haiku-5-5";
@@ -26,7 +32,7 @@ Rules:
 - Fit the suggestions to planType (e.g. bachelor/bachelorette: nightlife and group plans; family: kid-friendly, little travel; proposal/honeymoon/couple: romantic places; rest: calm and nature; first_trip: easy, safe, well connected places).
 - When there are children, every activity, lodging and restaurant must suit their ages: no nightlife-only plans, no activities with age or height limits they don't meet, family rooms or apartments, short transfers for babies and toddlers. Price children realistically: babies under 2 usually fly on a lap for a small fee and stay free; many tickets are reduced for children.
 - If startDate is given, consider the season (high/low, weather) for those dates.
-- Use real, well-known place names. Do not invent prices that are wildly off; when unsure, round to a typical value.
+- Use real, well-known place names, written exactly as the business is listed on Google Maps. Never invent a place. Do not invent prices that are wildly off; when unsure, round to a typical value.
 - The group leaves from "origin" (a city). Infer the origin country from the city. "nationalities" lists every nationality in the group (one or more).
 - requirements: short text on passport/visa/entry needs. If the group has several nationalities and the needs differ, say what each nationality needs (one short clause each). Mention documents for minors when there are children (e.g. birth certificate, travel permit if a parent is not traveling). End with a reminder to verify them before buying. For a destination inside the origin country, say whether a passport is needed for each nationality (mention any local entry card, such as San Andres's tourist card in Colombia).
 - Write every text field in the language given by "lang" ("es" = Spanish, "en" = English). Keep each text short (one sentence).
@@ -50,7 +56,7 @@ Mode "known" (the traveler already chose "destination"):
 Mode "local" (the group wants a plan in the city where they already are, "city"):
 - There is no trip: ignore travel, passports and requirements. "today" is today's date; "when" is "today", "weekend" (the coming weekend) or "date" (use "date").
 - Return 4 or 5 real, currently well-known places in or near "city" that match "interests" (food, nightlife, culture, outdoors, kids = family plan, romantic, celebration). Mix the interests when there are several.
-- Each place: name; kind (a short label such as "Restaurante" or "Mirador", in "lang"); area (neighborhood or zone); why (one sentence); priceLevel ("$", "$$" or "$$$"); cost = estimated total for the whole group (food, drinks, tickets, local transport).
+- Each place: name (the exact Google Maps name); kind (a short label such as "Restaurante" or "Mirador", in "lang"); area (the neighborhood, as specific as you know it; never a street address); why (one sentence); priceLevel ("$", "$$" or "$$$"); cost = estimated total for the whole group (food, drinks, tickets, local transport).
 - Each place's cost must fit budgetTotal. If nothing fits, set budgetTooLow and minimumBudget as above.
 - With children: only places that welcome them at those ages; no bars or nightclubs.
 - tips: 2 or 3 short tips (booking, best time to go, safety, transport).`;
@@ -96,6 +102,31 @@ function tripOnly(r: PlanRequest) {
   return r.mode === "suggest"
     ? { ...base, passport: r.passport, visas: [...r.visas].sort() }
     : { ...base, destination: r.destination, hasFlights: r.hasFlights, hasLodging: r.hasLodging };
+}
+
+/**
+ * Adds real address, photo and contacts from Google Maps. In "local" mode, places Google cannot find are
+ * dropped (they are likely made up), unless none is found at all. Not stored: Google's terms forbid it.
+ */
+async function withPlaces(r: PlanRequest, result: unknown): Promise<unknown> {
+  if (!placesEnabled()) return result;
+  if (r.mode === "local") {
+    const res = result as LocalResult;
+    const found = await Promise.all(res.places.map((p) => findPlace(`${p.name}, ${p.area}, ${r.city}`, r.lang)));
+    const places = res.places.map((p, i) => ({ ...p, info: found[i] ?? undefined }));
+    const real = places.filter((p) => p.info);
+    return { ...res, places: real.length ? real : places } satisfies LocalView;
+  }
+  if (r.mode === "known") {
+    const res = result as KnownResult;
+    const names = [...new Set(res.itinerary.flatMap((d) => d.restaurants.map((x) => x.name)))].slice(0, MAX_RESTAURANT_LOOKUPS);
+    const found = new Map(await Promise.all(names.map(async (n) => [n, await findPlace(`${n}, ${r.destination}`, r.lang)] as const)));
+    return {
+      ...res,
+      itinerary: res.itinerary.map((d) => ({ ...d, restaurants: d.restaurants.map((x) => ({ ...x, info: found.get(x.name) ?? undefined })) })),
+    } satisfies KnownView;
+  }
+  return result;
 }
 
 async function toCop(amount: number, currency: string): Promise<number | null> {
@@ -238,9 +269,10 @@ export default async (req: Request) => {
   // The "contact me" button only makes sense when there is a way to reach the person.
   if (!r.email && !r.whatsapp) leadId = null;
 
-  if (r.mode === "suggest") return json({ ok: true, mode: "suggest", leadId, result: result as SuggestResult });
-  if (r.mode === "known") return json({ ok: true, mode: "known", leadId, result: result as KnownResult });
-  return json({ ok: true, mode: "local", leadId, result: result as LocalResult });
+  const view = await withPlaces(r, result);
+  if (r.mode === "suggest") return json({ ok: true, mode: "suggest", leadId, result: view as SuggestResult });
+  if (r.mode === "known") return json({ ok: true, mode: "known", leadId, result: view as KnownView });
+  return json({ ok: true, mode: "local", leadId, result: view as LocalView });
 };
 
 export const config: Config = { path: "/api/plan" };

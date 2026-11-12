@@ -138,8 +138,28 @@ export type SuggestResult = z.infer<typeof SuggestResult>;
 export type LocalResult = z.infer<typeof LocalResult>;
 export type KnownResult = z.infer<typeof KnownResult>;
 
+/** Real data about a place, looked up in Google Maps after the AI answers. Never stored. */
+export type PlaceInfo = {
+  address: string;
+  mapsUrl: string | null;
+  photoUrl: string | null;
+  photoBy: string | null;
+  photoByUrl: string | null;
+  phone: string | null;
+  website: string | null;
+  rating: number | null;
+  ratingCount: number | null;
+};
+
+type Day = KnownResult["itinerary"][number];
+export type Restaurant = Day["restaurants"][number] & { info?: PlaceInfo };
+export type Place = LocalResult["places"][number] & { info?: PlaceInfo };
+/** What the page receives: the AI answer plus Google Maps data where it was found. */
+export type KnownView = Omit<KnownResult, "itinerary"> & { itinerary: (Omit<Day, "restaurants"> & { restaurants: Restaurant[] })[] };
+export type LocalView = Omit<LocalResult, "places"> & { places: Place[] };
+
 export type PlanResponse =
   | { ok: true; mode: "suggest"; leadId: string | null; result: SuggestResult }
-  | { ok: true; mode: "known"; leadId: string | null; result: KnownResult }
-  | { ok: true; mode: "local"; leadId: string | null; result: LocalResult }
+  | { ok: true; mode: "known"; leadId: string | null; result: KnownView }
+  | { ok: true; mode: "local"; leadId: string | null; result: LocalView }
   | { ok: false; error: "invalid" | "ai_unavailable" | "server" };
