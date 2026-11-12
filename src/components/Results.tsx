@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { dict } from "../i18n";
 import { money } from "../form";
-import type { Currency, KnownResult, Lang, LocalResult, SuggestResult } from "../shared/schema";
+import type { Currency, KnownView as KnownData, Lang, LocalView as LocalData, PlaceInfo, SuggestResult } from "../shared/schema";
 
 type T = (typeof dict)["es"];
 type Common = { t: T; lang: Lang; currency: Currency; budgetTotal: number };
@@ -53,6 +53,62 @@ function TooLow({ t, min, fmt }: { t: T; min: number; fmt: (n: number) => string
   );
 }
 
+/** Contact links for a place found in Google Maps. */
+function PlaceLinks({ t, info, compact = false }: { t: T; info: PlaceInfo; compact?: boolean }) {
+  const link = "inline-flex items-center gap-1 font-medium text-brand-700 underline-offset-2 hover:underline dark:text-brand-400";
+  return (
+    <div className={compact ? "mt-1 space-y-1 pl-6 text-sm" : "mt-3 space-y-2 text-sm"}>
+      <p className="text-stone-600 dark:text-stone-400">
+        📍 {info.address}
+        {info.rating !== null && (
+          <span className="ml-2 whitespace-nowrap text-stone-500">
+            ⭐ {info.rating.toFixed(1)}
+            {info.ratingCount ? ` (${info.ratingCount.toLocaleString()})` : ""}
+          </span>
+        )}
+      </p>
+      <p className="flex flex-wrap gap-x-4 gap-y-1">
+        {info.mapsUrl && (
+          <a className={link} href={info.mapsUrl} target="_blank" rel="noopener noreferrer">
+            🗺️ {t.openMaps}
+          </a>
+        )}
+        {info.phone && (
+          <a className={link} href={`tel:${info.phone.replace(/[^\d+]/g, "")}`}>
+            📞 {info.phone}
+          </a>
+        )}
+        {info.website && (
+          <a className={link} href={info.website} target="_blank" rel="noopener noreferrer">
+            🌐 {t.website}
+          </a>
+        )}
+      </p>
+    </div>
+  );
+}
+
+function PlacePhoto({ t, info, alt }: { t: T; info: PlaceInfo; alt: string }) {
+  if (!info.photoUrl) return null;
+  return (
+    <figure className="-mx-5 -mt-5 mb-4 sm:-mx-6 sm:-mt-6">
+      <img src={info.photoUrl} alt={alt} loading="lazy" className="aspect-[16/9] w-full rounded-t-2xl object-cover" />
+      {info.photoBy && (
+        <figcaption className="px-5 pt-1 text-right text-xs text-stone-400 sm:px-6">
+          {t.photoBy}:{" "}
+          {info.photoByUrl ? (
+            <a href={info.photoByUrl} target="_blank" rel="noopener noreferrer" className="underline">
+              {info.photoBy}
+            </a>
+          ) : (
+            info.photoBy
+          )}
+        </figcaption>
+      )}
+    </figure>
+  );
+}
+
 export function SuggestView({ t, lang, currency, budgetTotal, result }: Common & { result: SuggestResult }) {
   const fmt = (n: number) => money(n, currency, lang);
   return (
@@ -99,7 +155,7 @@ export function SuggestView({ t, lang, currency, budgetTotal, result }: Common &
   );
 }
 
-export function KnownView({ t, lang, currency, budgetTotal, result }: Common & { result: KnownResult }) {
+export function KnownView({ t, lang, currency, budgetTotal, result }: Common & { result: KnownData }) {
   const fmt = (n: number) => money(n, currency, lang);
   return (
     <div className="space-y-5">
@@ -127,11 +183,14 @@ export function KnownView({ t, lang, currency, budgetTotal, result }: Common & {
                 <p className="mt-3 text-sm font-semibold text-stone-500 dark:text-stone-400">{t.restaurants}</p>
                 <ul className="mt-1 space-y-1.5">
                   {d.restaurants.map((r, j) => (
-                    <li key={j} className="flex justify-between gap-3">
-                      <span>
-                        🍽️ {r.name} <span className="text-stone-400">{r.priceLevel}</span>
-                      </span>
-                      <span className="shrink-0 tabular-nums text-stone-600 dark:text-stone-400">{fmt(r.cost)}</span>
+                    <li key={j}>
+                      <div className="flex justify-between gap-3">
+                        <span>
+                          🍽️ {r.name} <span className="text-stone-400">{r.priceLevel}</span>
+                        </span>
+                        <span className="shrink-0 tabular-nums text-stone-600 dark:text-stone-400">{fmt(r.cost)}</span>
+                      </div>
+                      {r.info && <PlaceLinks t={t} info={r.info} compact />}
                     </li>
                   ))}
                 </ul>
@@ -172,7 +231,7 @@ export function KnownView({ t, lang, currency, budgetTotal, result }: Common & {
   );
 }
 
-export function LocalView({ t, lang, currency, budgetTotal, result }: Common & { result: LocalResult }) {
+export function LocalView({ t, lang, currency, budgetTotal, result }: Common & { result: LocalData }) {
   const fmt = (n: number) => money(n, currency, lang);
   return (
     <div className="space-y-5">
@@ -184,12 +243,13 @@ export function LocalView({ t, lang, currency, budgetTotal, result }: Common & {
 
       <ol className="space-y-4">
         {result.places.map((p, i) => (
-          <li key={i} className="card">
+          <li key={i} className="card overflow-hidden">
+            {p.info && <PlacePhoto t={t} info={p.info} alt={p.name} />}
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <p className="text-xs font-semibold uppercase tracking-wider text-brand-700 dark:text-brand-500">{p.kind}</p>
                 <h2 className="text-lg font-bold">{p.name}</h2>
-                <p className="text-sm text-stone-500 dark:text-stone-400">📍 {p.area}</p>
+                {!p.info && <p className="text-sm text-stone-500 dark:text-stone-400">📍 {p.area}</p>}
               </div>
               <div className="shrink-0 text-right">
                 <p className={`font-bold tabular-nums ${p.cost > budgetTotal ? "text-amber-700 dark:text-amber-400" : ""}`}>{fmt(p.cost)}</p>
@@ -199,10 +259,12 @@ export function LocalView({ t, lang, currency, budgetTotal, result }: Common & {
               </div>
             </div>
             <p className="mt-2 text-stone-700 dark:text-stone-300">{p.why}</p>
+            {p.info && <PlaceLinks t={t} info={p.info} />}
           </li>
         ))}
       </ol>
 
+      {result.places.some((p) => p.info) && <p className="text-center text-xs text-stone-400">{t.googleData}</p>}
       {result.tips.length > 0 && (
         <div className="card">
           <p className="font-semibold">💡 {t.tips}</p>
